@@ -1,0 +1,133 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+
+  <title>TradingView Advanced Charts</title>
+
+  <!-- Fix for iOS Safari zooming bug -->
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
+
+  <script type="text/javascript" src="charting_library/charting_library.standalone.js"></script>
+  <script type="text/javascript" src="datafeeds/udf/dist/bundle.js"></script>
+
+  <script type="text/javascript">
+    var _symbol = "ETH/USDT"
+    const RED = "#FF4F33"
+    const GREEN = "#36C56E"
+    var theme = "Dark"
+
+    const chartStyleOverrides = ["candleStyle", "hollowCandleStyle", "haStyle"].reduce((acc, cv) => {
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.drawWick`] = true
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.drawBorder`] = false
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.upColor`] = GREEN
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.downColor`] = RED
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.wickUpColor`] = GREEN
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.wickDownColor`] = RED
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.borderUpColor`] = GREEN
+      // @ts-ignore
+      acc[`mainSeriesProperties.${cv}.borderDownColor`] = RED
+      return acc
+    }, {})
+
+    const chartOverrides = {
+      "paneProperties.background": theme === "Dark" ? "#171A1F" : "white",
+      "paneProperties.backgroundType": "solid",
+      "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.09)",
+      "paneProperties.vertGridProperties.style": 2,
+      "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.09)",
+      "paneProperties.horzGridProperties.style": 2,
+      "crossHairProperties.style": 2,
+      "scalesProperties.textColor": "rgba(249, 249, 249, 0.6)",
+      "scalesProperties.lineColor": "rgba(255, 255, 255, 0.09)",
+      ...chartStyleOverrides,
+    }
+
+    function getParameterByName(name) {
+      name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]")
+      var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search)
+      return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "))
+    }
+
+    function createChart(symbol) {
+      var datafeedUrl = "http://165.22.255.37:8080"
+      var customDataUrl = getParameterByName("dataUrl")
+      if (customDataUrl !== "") {
+        datafeedUrl = customDataUrl.startsWith("https://") ? customDataUrl : `https://${customDataUrl}`
+      }
+
+      var widget = window.tvWidget = new TradingView.widget({
+        // debug: true, // uncomment this line to see Library errors and warnings in the console
+        fullscreen: true,
+        symbol: symbol,
+        interval: "1h",
+        container: "tv_chart_container",
+
+        //	BEWARE: no trailing slash is expected in feed URL
+        datafeed: new Datafeeds.UDFCompatibleDatafeed(datafeedUrl, 1000, {
+          maxResponseLength: 500,
+          expectedOrder: "latestFirst",
+        }),
+        library_path: "charting_library/",
+        locale: "en",
+        disabled_features: [
+          "header_compare", "compare_symbol", "save_chart_properties_to_local_storage", "header_saveload", "save_shortcut",
+          "use_localstorage_for_settings", "display_market_status", "header_symbol_search", "timeframes_toolbar",
+          "edit_buttons_in_legend", "context_menus", "control_bar", "border_around_the_chart", "header_fullscreen_button",
+          "header_settings", "header_screenshot",
+        ],
+        enabled_features: [
+          "hide_left_toolbar_by_default",
+        ],
+        charts_storage_url: "https://saveload.tradingview.com",
+        charts_storage_api_version: "1.1",
+        client_id: "tradingview.com",
+        user_id: "public_user_id",
+        theme: "Dark",
+        // custom_css_url should be related to library_path
+        custom_css_url: "../themed.css",
+        overrides: chartOverrides,
+      })
+    }
+
+    function removeChart() {
+      if (window.tvWidget) {
+        window.tvWidget.remove()
+      }
+    }
+
+    // window.addEventListener("DOMContentLoaded", createChart, false)
+
+    window.addEventListener("message", (event) => {
+      if (window.tvWidget) {
+        if (event.data.startsWith("RELOAD")) {
+          const _symbol = event.data.split(":")[1]
+          removeChart()
+          createChart(_symbol)
+          return
+        }
+
+        if (event.data !== _symbol) {
+          window.tvWidget.setSymbol(event.data, "1h", null)
+        }
+      } else {
+        createChart(event.data)
+      }
+      _symbol = event.data
+    })
+  </script>
+
+</head>
+
+<body style="margin:0px;">
+<div id="tv_chart_container"></div>
+</body>
+
+</html>
